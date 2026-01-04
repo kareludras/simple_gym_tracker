@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
 import '../data/models/exercise.dart';
+import '../../../features/settings/data/settings_provider.dart';
+import '../../../features/settings/data/settings_repository.dart';
 
 class ExerciseListScreen extends ConsumerWidget {
   const ExerciseListScreen({super.key});
@@ -63,26 +65,14 @@ class ExerciseListScreen extends ConsumerWidget {
               ),
             ),
             ...categoryExercises.map((exercise) {
-              return ListTile(
-                title: Text(exercise.name),
-                trailing: exercise.isBuiltin
-                    ? const Chip(
-                  label: Text('Built-in'),
-                  labelStyle: TextStyle(fontSize: 12),
-                )
-                    : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () => _showEditExerciseDialog(context, ref, exercise),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete),
-                      onPressed: () => _deleteExercise(context, ref, exercise),
-                    ),
-                  ],
-                ),
+              return _ExerciseListItem(
+                exercise: exercise,
+                onEdit: exercise.isBuiltin
+                    ? null
+                    : () => _showEditExerciseDialog(context, ref, exercise),
+                onDelete: exercise.isBuiltin
+                    ? null
+                    : () => _deleteExercise(context, ref, exercise),
               );
             }),
             const Divider(),
@@ -273,5 +263,109 @@ class ExerciseListScreen extends ConsumerWidget {
         }
       }
     }
+  }
+}
+
+class _ExerciseListItem extends ConsumerWidget {
+  final Exercise exercise;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+
+  const _ExerciseListItem({
+    required this.exercise,
+    this.onEdit,
+    this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prMapAsync = ref.watch(prMapProvider);
+    final weightUnit = ref.watch(weightUnitProvider);
+    final unitLabel = weightUnit == WeightUnit.kg ? 'kg' : 'lb';
+
+    return prMapAsync.when(
+      data: (prMap) {
+        final pr = prMap[exercise.id];
+
+        return ListTile(
+          title: Text(exercise.name),
+          subtitle: pr != null
+              ? Text(
+            'PR: ${pr.maxWeight?.toStringAsFixed(1) ?? '-'} $unitLabel × ${pr.maxReps ?? '-'} reps',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.blue[700],
+            ),
+          )
+              : null,
+          trailing: exercise.isBuiltin
+              ? const Chip(
+            label: Text('Built-in'),
+            labelStyle: TextStyle(fontSize: 12),
+          )
+              : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (onEdit != null)
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: onEdit,
+                ),
+              if (onDelete != null)
+                IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: onDelete,
+                ),
+            ],
+          ),
+        );
+      },
+      loading: () => ListTile(
+        title: Text(exercise.name),
+        trailing: exercise.isBuiltin
+            ? const Chip(
+          label: Text('Built-in'),
+          labelStyle: TextStyle(fontSize: 12),
+        )
+            : Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (onEdit != null)
+              IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: onEdit,
+              ),
+            if (onDelete != null)
+              IconButton(
+                icon: const Icon(Icons.delete),
+                onPressed: onDelete,
+              ),
+          ],
+        ),
+      ),
+      error: (_, __) => ListTile(
+        title: Text(exercise.name),
+        trailing: exercise.isBuiltin
+            ? const Chip(
+          label: Text('Built-in'),
+          labelStyle: TextStyle(fontSize: 12),
+        )
+            : Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (onEdit != null)
+              IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: onEdit,
+              ),
+            if (onDelete != null)
+              IconButton(
+                icon: const Icon(Icons.delete),
+                onPressed: onDelete,
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }

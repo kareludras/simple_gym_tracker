@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'models/workout.dart';
 import 'models/set.dart';
 import '../../exercises/data/models/exercise.dart';
 
