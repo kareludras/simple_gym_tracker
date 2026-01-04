@@ -28,6 +28,10 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
         actions: _isWorkoutActive
             ? [
           IconButton(
+            icon: const Icon(Icons.note_add),
+            onPressed: _addNote,
+          ),
+          IconButton(
             icon: const Icon(Icons.save),
             onPressed: _saveWorkout,
           ),
@@ -154,6 +158,41 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
 
   void _removeExercise(int index) {
     ref.read(workoutDraftProvider.notifier).removeExercise(index);
+  }
+
+  void _addNote() {
+    final draft = ref.read(workoutDraftProvider);
+    final controller = TextEditingController(text: draft.note);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Workout Note'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'Add a note about this workout...',
+          ),
+          maxLines: 3,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              ref
+                  .read(workoutDraftProvider.notifier)
+                  .setNote(controller.text.trim().isEmpty ? null : controller.text);
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _saveWorkout() async {
