@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'features/exercises/ui/exercise_list_screen.dart';
 
 void main() {
+  // Initialize sqflite for desktop platforms
+  sqfliteFfiInit();
+  databaseFactory = databaseFactoryFfi;
+
   runApp(const ProviderScope(child: GymTrackerApp()));
 }
 
@@ -16,23 +22,7 @@ class GymTrackerApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
-    );
-  }
-}
-
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gym Tracker'),
-      ),
-      body: const Center(
-        child: Text('Ready to build!'),
-      ),
+      home: const ExerciseListScreen(),
     );
   }
 }
