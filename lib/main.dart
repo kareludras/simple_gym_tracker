@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'features/exercises/ui/exercise_list_screen.dart';
+import 'features/workouts/ui/active_workout_screen.dart';
 
 void main() {
   // Initialize sqflite for desktop platforms
@@ -22,7 +22,7 @@ class GymTrackerApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const ExerciseListScreen(),
+      home: const ActiveWorkoutScreen(),
     );
   }
 }
