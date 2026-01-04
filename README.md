@@ -1,16 +1,31 @@
-# gym_tracker
+# Gym Tracker
 
-A new Flutter project.
+A simple, offline-first workout logging app built with Flutter.
 
-## Getting Started
+## v1.0 Features
 
-This project is a starting point for a Flutter application.
+### ✅ Current Features
 
-A few resources to get you started if this is your first Flutter project:
+- **Workout Logging** - Add exercises, log sets with weight and reps
+- **20 Built-in Exercises** - Pre-loaded exercises organized by category (Legs, Chest, Back, Arms, Shoulders, Core)
+- **Custom Exercises** - Create, edit, and delete your own exercises
+- **Workout History** - View and delete past workouts
+- **Workout Notes** - Add notes to your workouts
+- **Personal Records** - Automatic tracking of max weight and max reps per exercise
+- **Settings** - Dark/light theme, weight units (kg/lb), reset data
+- **Offline-First** - All data stored locally in SQLite, no internet required
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## v2.0 Roadmap
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### 🚀 Planned Features
+
+- **Workout Templates** - Save and reuse common workouts
+- **Workout Detail View** - Click on history items to see all exercises and sets
+- **Better Exercise Picker** - Search and filter when adding exercises
+- **Rest Timer** - Countdown timer between sets
+- **Progress Charts** - Visualize strength gains over time
+- **Volume Tracking** - Track total volume per workout and muscle group
+- **Exercise Instructions** - Add form tips and videos
+- **Export Data** - Export workout history to CSV
+- **Workout Programs** - Follow structured training plans
+- **Cloud Backup** - Optional cloud sync for multi-device support
