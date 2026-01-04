@@ -1,6 +1,18 @@
 # Gym Tracker
 
+![App Preview](screenshots/main_card.jpg)
+
 A simple, offline-first workout logging app built with Flutter.
+
+## Screenshots
+
+### Workout Logging
+![Workout Logging](screenshots/sets.jpg)
+*Log sets with weight and reps*
+
+### Workout History
+![Workout History](screenshots/history.jpg)
+*Track all past workouts*
 
 ## v1.0 Features
 
@@ -29,3 +41,10 @@ A simple, offline-first workout logging app built with Flutter.
 - **Export Data** - Export workout history to CSV
 - **Workout Programs** - Follow structured training plans
 - **Cloud Backup** - Optional cloud sync for multi-device support
+
+## Tech Stack
+
+- **Flutter** - Cross-platform framework
+- **Riverpod** - State management
+- **SQLite** - Local database
+- **go_router** - Navigation
