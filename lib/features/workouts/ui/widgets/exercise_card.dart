@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/workout_draft_provider.dart';
+import '../../../../features/settings/data/settings_provider.dart';
+import '../../../../features/settings/data/settings_repository.dart';
 
 class ExerciseCard extends ConsumerWidget {
   final DraftWorkoutExercise draftExercise;
@@ -62,7 +64,12 @@ class ExerciseCard extends ConsumerWidget {
               child: Row(
                 children: [
                   const SizedBox(width: 40, child: Text('Set', style: TextStyle(fontWeight: FontWeight.bold))),
-                  const Expanded(child: Text('Weight (kg)', style: TextStyle(fontWeight: FontWeight.bold))),
+                  Expanded(
+                    child: Text(
+                      'Weight (${ref.watch(weightUnitProvider) == WeightUnit.kg ? 'kg' : 'lb'})',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
                   const Expanded(child: Text('Reps', style: TextStyle(fontWeight: FontWeight.bold))),
                   const SizedBox(width: 40, child: Text('✓', style: TextStyle(fontWeight: FontWeight.bold))),
                 ],

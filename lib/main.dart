@@ -4,6 +4,8 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'features/workouts/ui/active_workout_screen.dart';
 import 'features/history/ui/history_screen.dart';
 import 'features/exercises/ui/exercise_list_screen.dart';
+import 'features/settings/ui/settings_screen.dart';
+import 'features/settings/data/settings_provider.dart';
 
 void main() {
   // Initialize sqflite for desktop platforms
@@ -13,17 +15,27 @@ void main() {
   runApp(const ProviderScope(child: GymTrackerApp()));
 }
 
-class GymTrackerApp extends StatelessWidget {
+class GymTrackerApp extends ConsumerWidget {
   const GymTrackerApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp(
       title: 'Gym Tracker',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+      ),
+      themeMode: themeMode,
       home: const MainScreen(),
     );
   }
@@ -43,6 +55,7 @@ class _MainScreenState extends State<MainScreen> {
     ActiveWorkoutScreen(),
     HistoryScreen(),
     ExerciseListScreen(),
+    SettingsScreen(),
   ];
 
   @override
@@ -68,6 +81,10 @@ class _MainScreenState extends State<MainScreen> {
           NavigationDestination(
             icon: Icon(Icons.list),
             label: 'Exercises',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
           ),
         ],
       ),
