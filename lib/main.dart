@@ -5,13 +5,13 @@ import 'features/workouts/ui/active_workout_screen.dart';
 import 'features/history/ui/history_screen.dart';
 import 'features/exercises/ui/exercise_list_screen.dart';
 import 'features/settings/ui/settings_screen.dart';
+import 'features/progress/ui/progress_screen.dart';
 import 'features/settings/data/settings_provider.dart';
 
 void main() {
-  // Initialize sqflite for desktop platforms
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
-
+  
   runApp(const ProviderScope(child: GymTrackerApp()));
 }
 
@@ -54,6 +54,7 @@ class _MainScreenState extends State<MainScreen> {
   static const List<Widget> _screens = [
     ActiveWorkoutScreen(),
     HistoryScreen(),
+    ProgressScreen(),
     ExerciseListScreen(),
     SettingsScreen(),
   ];
@@ -61,10 +62,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
-      ),
+      body: _screens[_selectedIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
@@ -80,6 +78,10 @@ class _MainScreenState extends State<MainScreen> {
           NavigationDestination(
             icon: Icon(Icons.history),
             label: 'History',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.show_chart),
+            label: 'Progress',
           ),
           NavigationDestination(
             icon: Icon(Icons.list),

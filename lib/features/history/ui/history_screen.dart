@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers.dart';
 import '../../../core/widgets/confirmation_dialog.dart';
+import 'workout_detail_screen.dart';
 
 class HistoryScreen extends ConsumerWidget {
   const HistoryScreen({super.key});
@@ -40,12 +41,17 @@ class HistoryScreen extends ConsumerWidget {
                     DateFormat('EEEE, MMMM d, y').format(workout.date),
                   ),
                   subtitle: workout.note != null
-                      ? Text(workout.note!)
+                      ? Text(
+                          workout.note!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        )
                       : null,
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline),
                     onPressed: () => _deleteWorkout(context, ref, workout.id!),
                   ),
+                  onTap: () => _navigateToWorkoutDetail(context, workout),
                 ),
               );
             },
@@ -55,6 +61,15 @@ class HistoryScreen extends ConsumerWidget {
         error: (error, stack) => Center(
           child: Text('Error: $error'),
         ),
+      ),
+    );
+  }
+
+  void _navigateToWorkoutDetail(BuildContext context, workout) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WorkoutDetailScreen(workout: workout),
       ),
     );
   }
