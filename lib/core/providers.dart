@@ -32,7 +32,7 @@ final workoutListProvider = FutureProvider<List<Workout>>((ref) async {
   return await repository.getAll();
 });
 
-// PR Provider - calculates personal records for all exercises
+// PR Provider, calculates personal records for all exercises
 final prMapProvider = FutureProvider<Map<int, PersonalRecord>>((ref) async {
   final workouts = await ref.watch(workoutListProvider.future);
   final exercises = await ref.watch(exerciseListProvider.future);

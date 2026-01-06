@@ -3,13 +3,11 @@ import 'tables.dart';
 
 class Migrations {
   static Future<void> onCreate(Database db, int version) async {
-    // Create all tables
     await db.execute(Tables.createExercises);
     await db.execute(Tables.createWorkouts);
     await db.execute(Tables.createWorkoutExercises);
     await db.execute(Tables.createSets);
 
-    // Seed built-in exercises
     final now = DateTime.now().millisecondsSinceEpoch;
     for (final exercise in Tables.builtInExercises) {
       await db.insert(Tables.exercises, {

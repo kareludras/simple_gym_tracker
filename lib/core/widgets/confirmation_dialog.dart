@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Reusable confirmation dialog for destructive or important actions
 class ConfirmationDialog {
   ConfirmationDialog._();
 
-  /// Shows a confirmation dialog and returns true if confirmed
   static Future<bool> show({
     required BuildContext context,
     required String title,
@@ -37,7 +35,6 @@ class ConfirmationDialog {
     return result ?? false;
   }
 
-  /// Shows a delete confirmation dialog (pre-configured for delete actions)
   static Future<bool> showDeleteConfirmation({
     required BuildContext context,
     required String itemName,

@@ -19,7 +19,6 @@ class PersonalRecord {
 }
 
 class PRCalculator {
-  /// Calculate PRs for a specific exercise from workout history
   static PersonalRecord calculatePRs({
     required int exerciseId,
     required List<Workout> workouts,
@@ -40,12 +39,10 @@ class PRCalculator {
         final sets = setsMap[we.id] ?? [];
         if (sets.isEmpty) continue;
 
-        // Update last performed
         if (lastPerformed == null || workout.date.isAfter(lastPerformed)) {
           lastPerformed = workout.date;
         }
 
-        // Calculate max weight
         for (final set in sets) {
           if (set.weight != null) {
             if (maxWeight == null || set.weight! > maxWeight) {
@@ -53,7 +50,6 @@ class PRCalculator {
             }
           }
 
-          // Calculate max reps
           if (set.reps != null) {
             if (maxReps == null || set.reps! > maxReps) {
               maxReps = set.reps;
@@ -61,7 +57,6 @@ class PRCalculator {
           }
         }
 
-        // Calculate volume for this workout
         double workoutVolume = 0;
         for (final set in sets) {
           if (set.weight != null && set.reps != null) {

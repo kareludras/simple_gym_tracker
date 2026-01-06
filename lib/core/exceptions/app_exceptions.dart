@@ -1,7 +1,3 @@
-// ignore_for_file: dangling_library_doc_comments
-/// Custom exceptions for better error handling and user feedback
-
-/// Exception thrown when trying to modify a built-in exercise
 class BuiltInExerciseException implements Exception {
   final String message;
 
@@ -11,7 +7,6 @@ class BuiltInExerciseException implements Exception {
   String toString() => message;
 }
 
-/// Exception thrown when trying to delete an exercise that's in use
 class ExerciseInUseException implements Exception {
   final String exerciseName;
 
@@ -21,7 +16,6 @@ class ExerciseInUseException implements Exception {
   String toString() => 'Cannot delete "$exerciseName" - it is used in workouts';
 }
 
-/// Exception thrown when a workout is invalid
 class InvalidWorkoutException implements Exception {
   final String reason;
 
@@ -31,7 +25,6 @@ class InvalidWorkoutException implements Exception {
   String toString() => 'Invalid workout: $reason';
 }
 
-/// Exception thrown when required data is not found
 class EntityNotFoundException implements Exception {
   final String entityType;
   final int id;
@@ -42,7 +35,6 @@ class EntityNotFoundException implements Exception {
   String toString() => '$entityType with id $id not found';
 }
 
-/// Exception thrown for general validation errors
 class ValidationException implements Exception {
   final String message;
 

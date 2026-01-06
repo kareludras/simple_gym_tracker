@@ -4,7 +4,6 @@ class Tables {
   static const String workoutExercises = 'workout_exercises';
   static const String sets = 'sets';
 
-  // Create statements
   static const String createExercises = '''
     CREATE TABLE $exercises (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

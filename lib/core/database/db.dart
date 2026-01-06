@@ -4,11 +4,9 @@ import 'package:sqflite/sqflite.dart';
 import 'migrations.dart';
 import '../constants/database_constants.dart';
 
-/// Service for managing SQLite database connection and lifecycle
 class DatabaseService {
   Database? _databaseInstance;
 
-  /// Gets the database instance, initializing it if necessary
   Future<Database> get database async {
     if (_databaseInstance != null) return _databaseInstance!;
 
@@ -32,7 +30,6 @@ class DatabaseService {
     return join(databasesPath, DatabaseConstants.databaseName);
   }
 
-  /// Closes the database connection
   Future<void> closeDatabaseConnection() async {
     if (_databaseInstance != null) {
       await _databaseInstance!.close();
@@ -40,7 +37,6 @@ class DatabaseService {
     }
   }
 
-  /// Deletes the database file (used for testing or data reset)
   Future<void> deleteDatabaseFile() async {
     final databasePath = await _getDatabasePath();
     await deleteDatabase(databasePath);
@@ -48,7 +44,6 @@ class DatabaseService {
   }
 }
 
-/// Provider for database service
 final databaseProvider = Provider<DatabaseService>((ref) {
   return DatabaseService();
 });

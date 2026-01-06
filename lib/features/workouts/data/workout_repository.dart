@@ -8,13 +8,11 @@ import 'models/workout_exercise.dart';
 import 'models/set.dart';
 import 'workout_draft_provider.dart';
 
-/// Repository for workout CRUD operations
 class WorkoutRepository {
   final DatabaseService _databaseService;
 
   WorkoutRepository(this._databaseService);
 
-  /// Retrieves all workouts ordered by date (newest first)
   Future<List<Workout>> getAllWorkoutsOrderedByDate() async {
     final database = await _databaseService.database;
     final workoutMaps = await database.query(
@@ -24,12 +22,10 @@ class WorkoutRepository {
     return _convertMapsToWorkouts(workoutMaps);
   }
 
-  // Keep old method for backwards compatibility
   Future<List<Workout>> getAll() async {
     return await getAllWorkoutsOrderedByDate();
   }
 
-  /// Retrieves a single workout by its ID
   Future<Workout?> getWorkoutById(int workoutId) async {
     final database = await _databaseService.database;
     final workoutMaps = await database.query(
@@ -44,12 +40,10 @@ class WorkoutRepository {
     return Workout.fromMap(workoutMaps.first);
   }
 
-  // Keep old method
   Future<Workout?> getById(int id) async {
     return await getWorkoutById(id);
   }
 
-  /// Creates a new workout
   Future<Workout> createWorkout(Workout workout) async {
     final database = await _databaseService.database;
     final workoutId = await database.insert(
@@ -59,12 +53,10 @@ class WorkoutRepository {
     return workout.copyWith(id: workoutId);
   }
 
-  // Keep old method
   Future<Workout> create(Workout workout) async {
     return await createWorkout(workout);
   }
 
-  /// Updates an existing workout
   Future<void> updateWorkout(Workout workout) async {
     _validateWorkoutHasId(workout);
 
@@ -77,12 +69,10 @@ class WorkoutRepository {
     );
   }
 
-  // Keep old method
   Future<void> update(Workout workout) async {
     return await updateWorkout(workout);
   }
 
-  /// Deletes a workout and all associated exercises and sets
   Future<void> deleteWorkoutCompletely(int workoutId) async {
     final database = await _databaseService.database;
 
@@ -93,12 +83,10 @@ class WorkoutRepository {
     });
   }
 
-  // Keep old method
   Future<void> delete(int id) async {
     return await deleteWorkoutCompletely(id);
   }
 
-  /// Retrieves all exercises for a specific workout
   Future<List<WorkoutExercise>> getWorkoutExercises(int workoutId) async {
     final database = await _databaseService.database;
     final workoutExerciseMaps = await database.query(
@@ -110,7 +98,6 @@ class WorkoutRepository {
     return _convertMapsToWorkoutExercises(workoutExerciseMaps);
   }
 
-  /// Adds an exercise to a workout
   Future<WorkoutExercise> addExerciseToWorkout({
     required int workoutId,
     required int exerciseId,
@@ -137,7 +124,6 @@ class WorkoutRepository {
     );
   }
 
-  /// Retrieves all sets for a workout exercise
   Future<List<ExerciseSet>> getSets(int workoutExerciseId) async {
     final database = await _databaseService.database;
     final setMaps = await database.query(
@@ -149,7 +135,6 @@ class WorkoutRepository {
     return _convertMapsToSets(setMaps);
   }
 
-  /// Adds a set to a workout exercise
   Future<ExerciseSet> addSet({
     required int workoutExerciseId,
     int? reps,
@@ -179,7 +164,6 @@ class WorkoutRepository {
     );
   }
 
-  /// Updates an existing set
   Future<void> updateSet(ExerciseSet set) async {
     _validateSetHasId(set);
 
@@ -192,7 +176,6 @@ class WorkoutRepository {
     );
   }
 
-  /// Deletes a set
   Future<void> deleteSet(int setId) async {
     final database = await _databaseService.database;
     await database.delete(
@@ -202,7 +185,6 @@ class WorkoutRepository {
     );
   }
 
-  /// Saves a complete workout draft (atomic transaction)
   Future<Workout> saveWorkoutDraft(WorkoutDraft draft) async {
     _validateWorkoutDraft(draft);
 
@@ -221,7 +203,6 @@ class WorkoutRepository {
     });
   }
 
-  // Private helper methods
 
   List<Workout> _convertMapsToWorkouts(List<Map<String, dynamic>> maps) {
     return maps.map((map) => Workout.fromMap(map)).toList();
