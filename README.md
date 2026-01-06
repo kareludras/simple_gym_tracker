@@ -47,14 +47,6 @@ A simple, offline-first workout logging app built with Flutter.
 - **Custom Exceptions** - Clear error messages for better UX
 - **Responsive UI** - Adaptive layouts with Material 3 design
 
-### Code Quality
-- **Clean Code Architecture** - Following Robert Martin's principles
-- **Repository Pattern** - Separation of concerns
-- **Constants** - No magic numbers, all UI values centralized
-- **Type-Safe Exceptions** - Custom exception classes for better error handling
-- **DRY Principle** - Reusable widgets and components
-- **Comprehensive Tests** - 31+ unit, widget, and integration tests
-
 ## 🚀 Future Roadmap (v2.0+)
 
 - **Workout Templates** - Save and reuse common workouts
