@@ -2,46 +2,53 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'migrations.dart';
+import '../constants/database_constants.dart';
 
+/// Service for managing SQLite database connection and lifecycle
 class DatabaseService {
-  static const String _dbName = 'gym_tracker.db';
-  static const int _dbVersion = 1;
+  Database? _databaseInstance;
 
-  Database? _database;
-
+  /// Gets the database instance, initializing it if necessary
   Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDatabase();
-    return _database!;
+    if (_databaseInstance != null) return _databaseInstance!;
+
+    _databaseInstance = await _initializeDatabase();
+    return _databaseInstance!;
   }
 
-  Future<Database> _initDatabase() async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, _dbName);
+  Future<Database> _initializeDatabase() async {
+    final databasePath = await _getDatabasePath();
 
     return await openDatabase(
-      path,
-      version: _dbVersion,
+      databasePath,
+      version: DatabaseConstants.databaseVersion,
       onCreate: Migrations.onCreate,
       onUpgrade: Migrations.onUpgrade,
     );
   }
 
-  Future<void> close() async {
-    if (_database != null) {
-      await _database!.close();
-      _database = null;
+  Future<String> _getDatabasePath() async {
+    final databasesPath = await getDatabasesPath();
+    return join(databasesPath, DatabaseConstants.databaseName);
+  }
+
+  /// Closes the database connection
+  Future<void> closeDatabaseConnection() async {
+    if (_databaseInstance != null) {
+      await _databaseInstance!.close();
+      _databaseInstance = null;
     }
   }
 
-  Future<void> deleteDb() async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, _dbName);
-    await deleteDatabase(path);
-    _database = null;
+  /// Deletes the database file (used for testing or data reset)
+  Future<void> deleteDatabaseFile() async {
+    final databasePath = await _getDatabasePath();
+    await deleteDatabase(databasePath);
+    _databaseInstance = null;
   }
 }
 
+/// Provider for database service
 final databaseProvider = Provider<DatabaseService>((ref) {
   return DatabaseService();
 });

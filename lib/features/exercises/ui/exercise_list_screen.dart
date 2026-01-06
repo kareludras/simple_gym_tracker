@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
+import '../../../core/widgets/confirmation_dialog.dart';
+import '../../../core/exceptions/app_exceptions.dart';
 import '../data/models/exercise.dart';
 import '../../../features/settings/data/settings_provider.dart';
 import '../../../features/settings/data/settings_repository.dart';
@@ -135,8 +137,8 @@ class ExerciseListScreen extends ConsumerWidget {
                     : categoryController.text.trim(),
               );
 
-              final repo = ref.read(exerciseRepositoryProvider);
-              await repo.create(exercise);
+              final repository = ref.read(exerciseRepositoryProvider);
+              await repository.createCustomExercise(exercise);
               ref.invalidate(exerciseListProvider);
 
               if (context.mounted) {
@@ -203,8 +205,8 @@ class ExerciseListScreen extends ConsumerWidget {
                     : categoryController.text.trim(),
               );
 
-              final repo = ref.read(exerciseRepositoryProvider);
-              await repo.update(updated);
+              final repository = ref.read(exerciseRepositoryProvider);
+              await repository.updateCustomExercise(updated);
               ref.invalidate(exerciseListProvider);
 
               if (context.mounted) {
@@ -222,29 +224,15 @@ class ExerciseListScreen extends ConsumerWidget {
   }
 
   Future<void> _deleteExercise(BuildContext context, WidgetRef ref, Exercise exercise) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await ConfirmationDialog.showDeleteConfirmation(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Exercise'),
-        content: Text('Delete "${exercise.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      itemName: exercise.name,
     );
 
-    if (confirmed == true && context.mounted) {
+    if (confirmed && context.mounted) {
       try {
-        final repo = ref.read(exerciseRepositoryProvider);
-        await repo.delete(exercise.id!);
+        final repository = ref.read(exerciseRepositoryProvider);
+        await repository.deleteCustomExercise(exercise.id!);
         ref.invalidate(exerciseListProvider);
 
         if (context.mounted) {
@@ -252,13 +240,22 @@ class ExerciseListScreen extends ConsumerWidget {
             SnackBar(content: Text('Deleted ${exercise.name}')),
           );
         }
+      } on BuiltInExerciseException catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          );
+        }
+      } on ExerciseInUseException catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          );
+        }
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Cannot delete: ${e.toString().replaceAll('Exception: ', '')}'),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
           );
         }
       }
@@ -291,80 +288,80 @@ class _ExerciseListItem extends ConsumerWidget {
           title: Text(exercise.name),
           subtitle: pr != null
               ? Text(
-            'PR: ${pr.maxWeight?.toStringAsFixed(1) ?? '-'} $unitLabel × ${pr.maxReps ?? '-'} reps',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.blue[700],
-            ),
-          )
+                  'PR: ${pr.maxWeight?.toStringAsFixed(1) ?? '-'} $unitLabel × ${pr.maxReps ?? '-'} reps',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.blue[700],
+                  ),
+                )
               : null,
           trailing: exercise.isBuiltin
               ? const Chip(
-            label: Text('Built-in'),
-            labelStyle: TextStyle(fontSize: 12),
-          )
+                  label: Text('Built-in'),
+                  labelStyle: TextStyle(fontSize: 12),
+                )
               : Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (onEdit != null)
-                IconButton(
-                  icon: const Icon(Icons.edit),
-                  onPressed: onEdit,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onEdit != null)
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: onEdit,
+                      ),
+                    if (onDelete != null)
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: onDelete,
+                      ),
+                  ],
                 ),
-              if (onDelete != null)
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: onDelete,
-                ),
-            ],
-          ),
         );
       },
       loading: () => ListTile(
         title: Text(exercise.name),
         trailing: exercise.isBuiltin
             ? const Chip(
-          label: Text('Built-in'),
-          labelStyle: TextStyle(fontSize: 12),
-        )
+                label: Text('Built-in'),
+                labelStyle: TextStyle(fontSize: 12),
+              )
             : Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (onEdit != null)
-              IconButton(
-                icon: const Icon(Icons.edit),
-                onPressed: onEdit,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (onEdit != null)
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: onEdit,
+                    ),
+                  if (onDelete != null)
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: onDelete,
+                    ),
+                ],
               ),
-            if (onDelete != null)
-              IconButton(
-                icon: const Icon(Icons.delete),
-                onPressed: onDelete,
-              ),
-          ],
-        ),
       ),
       error: (_, __) => ListTile(
         title: Text(exercise.name),
         trailing: exercise.isBuiltin
             ? const Chip(
-          label: Text('Built-in'),
-          labelStyle: TextStyle(fontSize: 12),
-        )
+                label: Text('Built-in'),
+                labelStyle: TextStyle(fontSize: 12),
+              )
             : Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (onEdit != null)
-              IconButton(
-                icon: const Icon(Icons.edit),
-                onPressed: onEdit,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (onEdit != null)
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: onEdit,
+                    ),
+                  if (onDelete != null)
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: onDelete,
+                    ),
+                ],
               ),
-            if (onDelete != null)
-              IconButton(
-                icon: const Icon(Icons.delete),
-                onPressed: onDelete,
-              ),
-          ],
-        ),
       ),
     );
   }

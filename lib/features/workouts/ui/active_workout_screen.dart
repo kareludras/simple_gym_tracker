@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../data/workout_draft_provider.dart';
 import 'widgets/exercise_card.dart';
 import '../../../core/providers.dart';
+import '../../../core/exceptions/app_exceptions.dart';
 
 class ActiveWorkoutScreen extends ConsumerStatefulWidget {
   const ActiveWorkoutScreen({super.key});
@@ -21,31 +22,41 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     final draft = ref.watch(workoutDraftProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: _isWorkoutActive
-            ? Text(DateFormat('EEEE, MMM d').format(draft.date))
-            : const Text('Workout'),
-        actions: _isWorkoutActive
-            ? [
-          IconButton(
-            icon: const Icon(Icons.note_add),
-            onPressed: _addNote,
-          ),
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _saveWorkout,
-          ),
-        ]
-            : null,
-      ),
+      appBar: _buildAppBar(draft),
       body: _isWorkoutActive ? _buildActiveWorkout() : _buildEmptyState(),
-      floatingActionButton: _isWorkoutActive
-          ? FloatingActionButton.extended(
-        onPressed: _addExercise,
-        icon: const Icon(Icons.add),
-        label: const Text('Add Exercise'),
-      )
-          : null,
+      floatingActionButton: _buildFloatingActionButton(),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(WorkoutDraft draft) {
+    return AppBar(
+      title: _isWorkoutActive
+          ? Text(DateFormat('EEEE, MMM d').format(draft.date))
+          : const Text('Workout'),
+      actions: _isWorkoutActive ? _buildAppBarActions() : null,
+    );
+  }
+
+  List<Widget> _buildAppBarActions() {
+    return [
+      IconButton(
+        icon: const Icon(Icons.note_add),
+        onPressed: _showAddNoteDialog,
+      ),
+      IconButton(
+        icon: const Icon(Icons.save),
+        onPressed: _saveWorkout,
+      ),
+    ];
+  }
+
+  Widget? _buildFloatingActionButton() {
+    if (!_isWorkoutActive) return null;
+
+    return FloatingActionButton.extended(
+      onPressed: _showExercisePicker,
+      icon: const Icon(Icons.add),
+      label: const Text('Add Exercise'),
     );
   }
 
@@ -79,43 +90,48 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     final draft = ref.watch(workoutDraftProvider);
 
     if (draft.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.fitness_center_outlined,
-              size: 60,
-              color: Colors.grey,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'No exercises yet',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
-            ),
-            const SizedBox(height: 8),
-            TextButton.icon(
-              onPressed: _addExercise,
-              icon: const Icon(Icons.add),
-              label: const Text('Add your first exercise'),
-            ),
-          ],
-        ),
-      );
+      return _buildEmptyWorkoutState();
     }
 
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 80),
       itemCount: draft.exercises.length,
-      itemBuilder: (context, index) {
-        final draftExercise = draft.exercises[index];
-        return ExerciseCard(
-          key: ValueKey(draftExercise.exercise.id),
-          draftExercise: draftExercise,
-          exerciseIndex: index,
-          onRemove: () => _removeExercise(index),
-        );
-      },
+      itemBuilder: (context, index) => _buildExerciseCard(draft.exercises[index], index),
+    );
+  }
+
+  Widget _buildEmptyWorkoutState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.fitness_center_outlined,
+            size: 60,
+            color: Colors.grey,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'No exercises yet',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: _showExercisePicker,
+            icon: const Icon(Icons.add),
+            label: const Text('Add your first exercise'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExerciseCard(DraftWorkoutExercise draftExercise, int index) {
+    return ExerciseCard(
+      key: ValueKey(draftExercise.exercise.id),
+      draftExercise: draftExercise,
+      exerciseIndex: index,
+      onRemove: () => _removeExercise(index),
     );
   }
 
@@ -126,12 +142,12 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     });
   }
 
-  void _addExercise() async {
-    //exercise picker later
+  Future<void> _showExercisePicker() async {
     final exercises = await ref.read(exerciseListProvider.future);
+    
     if (!mounted) return;
 
-    final selected = await showDialog<int>(
+    final selectedIndex = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Select Exercise'),
@@ -143,6 +159,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
             itemBuilder: (context, index) {
               return ListTile(
                 title: Text(exercises[index].name),
+                subtitle: Text(exercises[index].category ?? ''),
                 onTap: () => Navigator.pop(context, index),
               );
             },
@@ -151,16 +168,20 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
       ),
     );
 
-    if (selected != null) {
-      ref.read(workoutDraftProvider.notifier).addExercise(exercises[selected]);
+    if (selectedIndex != null) {
+      _addExerciseToWorkout(exercises[selectedIndex]);
     }
+  }
+
+  void _addExerciseToWorkout(dynamic exercise) {
+    ref.read(workoutDraftProvider.notifier).addExercise(exercise);
   }
 
   void _removeExercise(int index) {
     ref.read(workoutDraftProvider.notifier).removeExercise(index);
   }
 
-  void _addNote() {
+  void _showAddNoteDialog() {
     final draft = ref.read(workoutDraftProvider);
     final controller = TextEditingController(text: draft.note);
 
@@ -183,9 +204,8 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              ref
-                  .read(workoutDraftProvider.notifier)
-                  .setNote(controller.text.trim().isEmpty ? null : controller.text);
+              final noteText = controller.text.trim();
+              _saveWorkoutNote(noteText.isEmpty ? null : noteText);
               Navigator.pop(context);
             },
             child: const Text('Save'),
@@ -195,29 +215,55 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     );
   }
 
+  void _saveWorkoutNote(String? note) {
+    ref.read(workoutDraftProvider.notifier).setNote(note);
+  }
+
   Future<void> _saveWorkout() async {
     final draft = ref.read(workoutDraftProvider);
 
-    if (draft.isEmpty) {
-      _showSnackBar('Add at least one exercise');
+    if (!_isWorkoutValid(draft)) {
       return;
     }
 
     try {
-      final repo = ref.read(workoutRepositoryProvider);
-      await repo.saveWorkoutDraft(draft);
-
-      ref.read(workoutDraftProvider.notifier).clear();
-      ref.invalidate(workoutListProvider);
-
-      setState(() {
-        _isWorkoutActive = false;
-      });
-
-      _showSnackBar('Workout saved!');
-    } catch (e) {
-      _showSnackBar('Error saving workout: $e');
+      await _persistWorkoutToDatabase(draft);
+      _cleanupAfterSuccessfulSave();
+      _showSuccessMessage();
+    } on InvalidWorkoutException catch (e) {
+      _showErrorMessage(e.toString());
+    } catch (error) {
+      _showErrorMessage('Error saving workout: $error');
     }
+  }
+
+  bool _isWorkoutValid(WorkoutDraft draft) {
+    if (draft.isEmpty) {
+      _showErrorMessage('Add at least one exercise');
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _persistWorkoutToDatabase(WorkoutDraft draft) async {
+    final repository = ref.read(workoutRepositoryProvider);
+    await repository.saveWorkoutDraft(draft);
+  }
+
+  void _cleanupAfterSuccessfulSave() {
+    ref.read(workoutDraftProvider.notifier).clear();
+    ref.invalidate(workoutListProvider);
+    setState(() {
+      _isWorkoutActive = false;
+    });
+  }
+
+  void _showSuccessMessage() {
+    _showSnackBar('Workout saved!');
+  }
+
+  void _showErrorMessage(String message) {
+    _showSnackBar(message);
   }
 
   void _showSnackBar(String message) {

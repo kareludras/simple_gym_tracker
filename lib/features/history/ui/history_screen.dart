@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers.dart';
+import '../../../core/widgets/confirmation_dialog.dart';
 
 class HistoryScreen extends ConsumerWidget {
   const HistoryScreen({super.key});
@@ -59,28 +60,17 @@ class HistoryScreen extends ConsumerWidget {
   }
 
   Future<void> _deleteWorkout(BuildContext context, WidgetRef ref, int workoutId) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await ConfirmationDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Workout'),
-        content: const Text('Are you sure you want to delete this workout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      title: 'Delete Workout',
+      message: 'Are you sure you want to delete this workout?',
+      confirmText: 'Delete',
+      isDangerous: true,
     );
 
-    if (confirmed == true && context.mounted) {
-      final repo = ref.read(workoutRepositoryProvider);
-      await repo.delete(workoutId);
+    if (confirmed && context.mounted) {
+      final repository = ref.read(workoutRepositoryProvider);
+      await repository.deleteWorkoutCompletely(workoutId);
       ref.invalidate(workoutListProvider);
     }
   }

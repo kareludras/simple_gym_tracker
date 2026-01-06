@@ -1,45 +1,75 @@
+import 'package:sqflite/sqflite.dart';
 import '../../../core/database/db.dart';
 import '../../../core/database/tables.dart';
+import '../../../core/constants/database_constants.dart';
+import '../../../core/exceptions/app_exceptions.dart';
 import 'models/workout.dart';
 import 'models/workout_exercise.dart';
-import 'workout_draft_provider.dart';
 import 'models/set.dart';
+import 'workout_draft_provider.dart';
 
+/// Repository for workout CRUD operations
 class WorkoutRepository {
-  final DatabaseService _db;
+  final DatabaseService _databaseService;
 
-  WorkoutRepository(this._db);
+  WorkoutRepository(this._databaseService);
 
-  Future<List<Workout>> getAll() async {
-    final db = await _db.database;
-    final maps = await db.query(
+  /// Retrieves all workouts ordered by date (newest first)
+  Future<List<Workout>> getAllWorkoutsOrderedByDate() async {
+    final database = await _databaseService.database;
+    final workoutMaps = await database.query(
       Tables.workouts,
-      orderBy: 'date DESC',
+      orderBy: DatabaseConstants.workoutDefaultOrder,
     );
-    return maps.map((m) => Workout.fromMap(m)).toList();
+    return _convertMapsToWorkouts(workoutMaps);
   }
 
-  Future<Workout?> getById(int id) async {
-    final db = await _db.database;
-    final maps = await db.query(
+  // Keep old method for backwards compatibility
+  Future<List<Workout>> getAll() async {
+    return await getAllWorkoutsOrderedByDate();
+  }
+
+  /// Retrieves a single workout by its ID
+  Future<Workout?> getWorkoutById(int workoutId) async {
+    final database = await _databaseService.database;
+    final workoutMaps = await database.query(
       Tables.workouts,
       where: 'id = ?',
-      whereArgs: [id],
+      whereArgs: [workoutId],
       limit: 1,
     );
-    if (maps.isEmpty) return null;
-    return Workout.fromMap(maps.first);
+
+    if (workoutMaps.isEmpty) return null;
+
+    return Workout.fromMap(workoutMaps.first);
   }
 
+  // Keep old method
+  Future<Workout?> getById(int id) async {
+    return await getWorkoutById(id);
+  }
+
+  /// Creates a new workout
+  Future<Workout> createWorkout(Workout workout) async {
+    final database = await _databaseService.database;
+    final workoutId = await database.insert(
+      Tables.workouts,
+      workout.toMap(),
+    );
+    return workout.copyWith(id: workoutId);
+  }
+
+  // Keep old method
   Future<Workout> create(Workout workout) async {
-    final db = await _db.database;
-    final id = await db.insert(Tables.workouts, workout.toMap());
-    return workout.copyWith(id: id);
+    return await createWorkout(workout);
   }
 
-  Future<void> update(Workout workout) async {
-    final db = await _db.database;
-    await db.update(
+  /// Updates an existing workout
+  Future<void> updateWorkout(Workout workout) async {
+    _validateWorkoutHasId(workout);
+
+    final database = await _databaseService.database;
+    await database.update(
       Tables.workouts,
       workout.toMap(),
       where: 'id = ?',
@@ -47,55 +77,46 @@ class WorkoutRepository {
     );
   }
 
-  Future<void> delete(int id) async {
-    final db = await _db.database;
-
-    final workoutExercises = await db.query(
-      Tables.workoutExercises,
-      where: 'workout_id = ?',
-      whereArgs: [id],
-    );
-
-    for (final we in workoutExercises) {
-      await db.delete(
-        Tables.sets,
-        where: 'workout_exercise_id = ?',
-        whereArgs: [we['id']],
-      );
-    }
-
-    await db.delete(
-      Tables.workoutExercises,
-      where: 'workout_id = ?',
-      whereArgs: [id],
-    );
-
-    await db.delete(
-      Tables.workouts,
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+  // Keep old method
+  Future<void> update(Workout workout) async {
+    return await updateWorkout(workout);
   }
 
+  /// Deletes a workout and all associated exercises and sets
+  Future<void> deleteWorkoutCompletely(int workoutId) async {
+    final database = await _databaseService.database;
+
+    await database.transaction((transaction) async {
+      await _deleteSetsForWorkout(transaction, workoutId);
+      await _deleteWorkoutExercises(transaction, workoutId);
+      await _deleteWorkout(transaction, workoutId);
+    });
+  }
+
+  // Keep old method
+  Future<void> delete(int id) async {
+    return await deleteWorkoutCompletely(id);
+  }
+
+  /// Retrieves all exercises for a specific workout
   Future<List<WorkoutExercise>> getWorkoutExercises(int workoutId) async {
-    final db = await _db.database;
-    final maps = await db.query(
+    final database = await _databaseService.database;
+    final workoutExerciseMaps = await database.query(
       Tables.workoutExercises,
       where: 'workout_id = ?',
       whereArgs: [workoutId],
-      orderBy: 'order_index ASC',
+      orderBy: DatabaseConstants.workoutExerciseDefaultOrder,
     );
-    return maps.map((m) => WorkoutExercise.fromMap(m)).toList();
+    return _convertMapsToWorkoutExercises(workoutExerciseMaps);
   }
 
+  /// Adds an exercise to a workout
   Future<WorkoutExercise> addExerciseToWorkout({
     required int workoutId,
     required int exerciseId,
   }) async {
-    final db = await _db.database;
-
-    final existing = await getWorkoutExercises(workoutId);
-    final orderIndex = existing.length;
+    final database = await _databaseService.database;
+    final orderIndex = await _getNextExerciseOrderIndex(workoutId);
 
     final workoutExercise = WorkoutExercise(
       workoutId: workoutId,
@@ -103,36 +124,40 @@ class WorkoutRepository {
       orderIndex: orderIndex,
     );
 
-    final id = await db.insert(Tables.workoutExercises, workoutExercise.toMap());
+    final workoutExerciseId = await database.insert(
+      Tables.workoutExercises,
+      workoutExercise.toMap(),
+    );
+
     return WorkoutExercise(
-      id: id,
+      id: workoutExerciseId,
       workoutId: workoutId,
       exerciseId: exerciseId,
       orderIndex: orderIndex,
     );
   }
 
+  /// Retrieves all sets for a workout exercise
   Future<List<ExerciseSet>> getSets(int workoutExerciseId) async {
-    final db = await _db.database;
-    final maps = await db.query(
+    final database = await _databaseService.database;
+    final setMaps = await database.query(
       Tables.sets,
       where: 'workout_exercise_id = ?',
       whereArgs: [workoutExerciseId],
-      orderBy: 'order_index ASC',
+      orderBy: DatabaseConstants.setDefaultOrder,
     );
-    return maps.map((m) => ExerciseSet.fromMap(m)).toList();
+    return _convertMapsToSets(setMaps);
   }
 
+  /// Adds a set to a workout exercise
   Future<ExerciseSet> addSet({
     required int workoutExerciseId,
     int? reps,
     double? weight,
     int? duration,
   }) async {
-    final db = await _db.database;
-
-    final existing = await getSets(workoutExerciseId);
-    final orderIndex = existing.length;
+    final database = await _databaseService.database;
+    final orderIndex = await _getNextSetOrderIndex(workoutExerciseId);
 
     final set = ExerciseSet(
       workoutExerciseId: workoutExerciseId,
@@ -142,9 +167,10 @@ class WorkoutRepository {
       orderIndex: orderIndex,
     );
 
-    final id = await db.insert(Tables.sets, set.toMap());
+    final setId = await database.insert(Tables.sets, set.toMap());
+
     return ExerciseSet(
-      id: id,
+      id: setId,
       workoutExerciseId: workoutExerciseId,
       reps: reps,
       weight: weight,
@@ -153,9 +179,12 @@ class WorkoutRepository {
     );
   }
 
+  /// Updates an existing set
   Future<void> updateSet(ExerciseSet set) async {
-    final db = await _db.database;
-    await db.update(
+    _validateSetHasId(set);
+
+    final database = await _databaseService.database;
+    await database.update(
       Tables.sets,
       set.toMap(),
       where: 'id = ?',
@@ -163,53 +192,25 @@ class WorkoutRepository {
     );
   }
 
-  Future<void> deleteSet(int id) async {
-    final db = await _db.database;
-    await db.delete(
+  /// Deletes a set
+  Future<void> deleteSet(int setId) async {
+    final database = await _databaseService.database;
+    await database.delete(
       Tables.sets,
       where: 'id = ?',
-      whereArgs: [id],
+      whereArgs: [setId],
     );
   }
 
-  /// Save a complete workout draft
+  /// Saves a complete workout draft (atomic transaction)
   Future<Workout> saveWorkoutDraft(WorkoutDraft draft) async {
-    final db = await _db.database;
+    _validateWorkoutDraft(draft);
 
-    // Start transaction
-    return await db.transaction((txn) async {
-      // 1. Insert workout
-      final workoutId = await txn.insert(
-        Tables.workouts,
-        {
-          'date': draft.date.millisecondsSinceEpoch,
-          'note': draft.note,
-          'created_at': DateTime.now().millisecondsSinceEpoch,
-        },
-      );
+    final database = await _databaseService.database;
 
-      // 2. Insert each exercise and its sets
-      for (final draftExercise in draft.exercises) {
-        // Insert workout_exercise
-        final workoutExerciseId = await txn.insert(
-          Tables.workoutExercises,
-          {
-            'workout_id': workoutId,
-            'exercise_id': draftExercise.exercise.id,
-            'order_index': draftExercise.orderIndex,
-          },
-        );
-
-        // Insert sets (only completed ones)
-        for (final draftSet in draftExercise.sets) {
-          if (draftSet.isComplete) {
-            await txn.insert(
-              Tables.sets,
-              draftSet.toExerciseSet(workoutExerciseId).toMap(),
-            );
-          }
-        }
-      }
+    return await database.transaction((transaction) async {
+      final workoutId = await _insertWorkout(transaction, draft);
+      await _insertExercisesAndSets(transaction, draft, workoutId);
 
       return Workout(
         id: workoutId,
@@ -218,5 +219,156 @@ class WorkoutRepository {
         createdAt: DateTime.now(),
       );
     });
+  }
+
+  // Private helper methods
+
+  List<Workout> _convertMapsToWorkouts(List<Map<String, dynamic>> maps) {
+    return maps.map((map) => Workout.fromMap(map)).toList();
+  }
+
+  List<WorkoutExercise> _convertMapsToWorkoutExercises(
+    List<Map<String, dynamic>> maps,
+  ) {
+    return maps.map((map) => WorkoutExercise.fromMap(map)).toList();
+  }
+
+  List<ExerciseSet> _convertMapsToSets(List<Map<String, dynamic>> maps) {
+    return maps.map((map) => ExerciseSet.fromMap(map)).toList();
+  }
+
+  void _validateWorkoutHasId(Workout workout) {
+    if (workout.id == null) {
+      throw ValidationException('Workout must have an ID to be updated');
+    }
+  }
+
+  void _validateSetHasId(ExerciseSet set) {
+    if (set.id == null) {
+      throw ValidationException('Set must have an ID to be updated');
+    }
+  }
+
+  void _validateWorkoutDraft(WorkoutDraft draft) {
+    if (draft.isEmpty) {
+      throw InvalidWorkoutException('Workout cannot be empty');
+    }
+
+    final hasCompletedSets = draft.exercises.any(
+      (exercise) => exercise.sets.any((set) => set.isComplete),
+    );
+
+    if (!hasCompletedSets) {
+      throw InvalidWorkoutException('At least one set must be completed');
+    }
+  }
+
+  Future<int> _getNextExerciseOrderIndex(int workoutId) async {
+    final existingExercises = await getWorkoutExercises(workoutId);
+    return existingExercises.length;
+  }
+
+  Future<int> _getNextSetOrderIndex(int workoutExerciseId) async {
+    final existingSets = await getSets(workoutExerciseId);
+    return existingSets.length;
+  }
+
+  Future<void> _deleteSetsForWorkout(
+    Transaction transaction,
+    int workoutId,
+  ) async {
+    final workoutExercises = await transaction.query(
+      Tables.workoutExercises,
+      where: 'workout_id = ?',
+      whereArgs: [workoutId],
+    );
+
+    for (final workoutExercise in workoutExercises) {
+      await transaction.delete(
+        Tables.sets,
+        where: 'workout_exercise_id = ?',
+        whereArgs: [workoutExercise['id']],
+      );
+    }
+  }
+
+  Future<void> _deleteWorkoutExercises(
+    Transaction transaction,
+    int workoutId,
+  ) async {
+    await transaction.delete(
+      Tables.workoutExercises,
+      where: 'workout_id = ?',
+      whereArgs: [workoutId],
+    );
+  }
+
+  Future<void> _deleteWorkout(Transaction transaction, int workoutId) async {
+    await transaction.delete(
+      Tables.workouts,
+      where: 'id = ?',
+      whereArgs: [workoutId],
+    );
+  }
+
+  Future<int> _insertWorkout(Transaction transaction, WorkoutDraft draft) async {
+    return await transaction.insert(
+      Tables.workouts,
+      {
+        'date': draft.date.millisecondsSinceEpoch,
+        'note': draft.note,
+        'created_at': DateTime.now().millisecondsSinceEpoch,
+      },
+    );
+  }
+
+  Future<void> _insertExercisesAndSets(
+    Transaction transaction,
+    WorkoutDraft draft,
+    int workoutId,
+  ) async {
+    for (final draftExercise in draft.exercises) {
+      final workoutExerciseId = await _insertWorkoutExercise(
+        transaction,
+        workoutId,
+        draftExercise,
+      );
+
+      await _insertCompletedSets(
+        transaction,
+        workoutExerciseId,
+        draftExercise.sets,
+      );
+    }
+  }
+
+  Future<int> _insertWorkoutExercise(
+    Transaction transaction,
+    int workoutId,
+    DraftWorkoutExercise draftExercise,
+  ) async {
+    return await transaction.insert(
+      Tables.workoutExercises,
+      {
+        'workout_id': workoutId,
+        'exercise_id': draftExercise.exercise.id,
+        'order_index': draftExercise.orderIndex,
+      },
+    );
+  }
+
+  Future<void> _insertCompletedSets(
+    Transaction transaction,
+    int workoutExerciseId,
+    List<DraftSet> sets,
+  ) async {
+    for (final draftSet in sets) {
+      if (draftSet.isComplete) {
+        await transaction.insert(
+          Tables.sets,
+          draftSet.toExerciseSet(workoutExerciseId).toMap(),
+        );
+      }
+    }
   }
 }

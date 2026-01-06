@@ -1,45 +1,58 @@
 import '../../../core/database/db.dart';
 import '../../../core/database/tables.dart';
+import '../../../core/constants/database_constants.dart';
+import '../../../core/exceptions/app_exceptions.dart';
 import 'models/exercise.dart';
 
+/// Repository for exercise CRUD operations following clean code principles
 class ExerciseRepository {
-  final DatabaseService _db;
+  final DatabaseService _databaseService;
 
-  ExerciseRepository(this._db);
+  ExerciseRepository(this._databaseService);
 
-  Future<List<Exercise>> getAll() async {
-    final db = await _db.database;
-    final maps = await db.query(
+  /// Retrieves all exercises ordered by built-in status, then alphabetically
+  Future<List<Exercise>> getAllExercisesOrderedByBuiltInThenName() async {
+    final database = await _databaseService.database;
+    final exerciseMaps = await database.query(
       Tables.exercises,
-      orderBy: 'is_builtin DESC, name ASC',
+      orderBy: DatabaseConstants.exerciseDefaultOrder,
     );
-    return maps.map((m) => Exercise.fromMap(m)).toList();
+    return _convertMapsToExercises(exerciseMaps);
   }
 
-  Future<Exercise?> getById(int id) async {
-    final db = await _db.database;
-    final maps = await db.query(
+  /// Retrieves a single exercise by its ID
+  Future<Exercise?> getExerciseById(int id) async {
+    final database = await _databaseService.database;
+    final exerciseMaps = await database.query(
       Tables.exercises,
       where: 'id = ?',
       whereArgs: [id],
       limit: 1,
     );
-    if (maps.isEmpty) return null;
-    return Exercise.fromMap(maps.first);
+
+    if (exerciseMaps.isEmpty) return null;
+
+    return Exercise.fromMap(exerciseMaps.first);
   }
 
-  Future<Exercise> create(Exercise exercise) async {
-    final db = await _db.database;
-    final id = await db.insert(Tables.exercises, exercise.toMap());
-    return exercise.copyWith(id: id);
+  /// Creates a new custom exercise
+  Future<Exercise> createCustomExercise(Exercise exercise) async {
+    final database = await _databaseService.database;
+    final exerciseId = await database.insert(
+      Tables.exercises,
+      exercise.toMap(),
+    );
+    return exercise.copyWith(id: exerciseId);
   }
 
-  Future<void> update(Exercise exercise) async {
-    if (exercise.isBuiltin) {
-      throw Exception('Cannot update built-in exercise');
-    }
-    final db = await _db.database;
-    await db.update(
+  /// Updates an existing custom exercise
+  /// 
+  /// Throws [BuiltInExerciseException] if attempting to update a built-in exercise
+  Future<void> updateCustomExercise(Exercise exercise) async {
+    _validateExerciseIsNotBuiltIn(exercise);
+
+    final database = await _databaseService.database;
+    await database.update(
       Tables.exercises,
       exercise.toMap(),
       where: 'id = ?',
@@ -47,28 +60,69 @@ class ExerciseRepository {
     );
   }
 
-  Future<void> delete(int id) async {
-    final db = await _db.database;
+  /// Deletes a custom exercise if not in use
+  /// 
+  /// Throws [BuiltInExerciseException] if attempting to delete a built-in exercise
+  /// Throws [ExerciseInUseException] if exercise is used in any workout
+  Future<void> deleteCustomExercise(int exerciseId) async {
+    final exercise = await getExerciseById(exerciseId);
 
-    final exercise = await getById(id);
-    if (exercise?.isBuiltin == true) {
-      throw Exception('Cannot delete built-in exercise');
+    if (exercise == null) {
+      throw EntityNotFoundException('Exercise', exerciseId);
     }
 
-    final usage = await db.query(
-      Tables.workoutExercises,
-      where: 'exercise_id = ?',
-      whereArgs: [id],
-      limit: 1,
-    );
-    if (usage.isNotEmpty) {
-      throw Exception('Cannot delete exercise used in workouts');
-    }
+    _validateExerciseIsNotBuiltIn(exercise);
+    await _validateExerciseIsNotInUse(exerciseId, exercise.name);
 
-    await db.delete(
+    final database = await _databaseService.database;
+    await database.delete(
       Tables.exercises,
       where: 'id = ?',
-      whereArgs: [id],
+      whereArgs: [exerciseId],
     );
+  }
+
+  /// Creates a copy of an exercise (useful for copy-on-edit of built-in exercises)
+  Future<Exercise> duplicateExercise(int exerciseId) async {
+    final originalExercise = await getExerciseById(exerciseId);
+
+    if (originalExercise == null) {
+      throw EntityNotFoundException('Exercise', exerciseId);
+    }
+
+    final duplicatedExercise = originalExercise.copyWith(
+      id: null,
+      name: '${originalExercise.name} (Copy)',
+      isBuiltin: false,
+      createdAt: DateTime.now(),
+    );
+
+    return await createCustomExercise(duplicatedExercise);
+  }
+
+  // Private helper methods
+
+  List<Exercise> _convertMapsToExercises(List<Map<String, dynamic>> maps) {
+    return maps.map((map) => Exercise.fromMap(map)).toList();
+  }
+
+  void _validateExerciseIsNotBuiltIn(Exercise exercise) {
+    if (exercise.isBuiltin) {
+      throw BuiltInExerciseException();
+    }
+  }
+
+  Future<void> _validateExerciseIsNotInUse(int exerciseId, String exerciseName) async {
+    final database = await _databaseService.database;
+    final usageCount = await database.query(
+      Tables.workoutExercises,
+      where: 'exercise_id = ?',
+      whereArgs: [exerciseId],
+      limit: 1,
+    );
+
+    if (usageCount.isNotEmpty) {
+      throw ExerciseInUseException(exerciseName);
+    }
   }
 }

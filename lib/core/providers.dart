@@ -10,63 +10,61 @@ import '../features/exercises/domain/pr_calculator.dart';
 
 // Exercise repository provider
 final exerciseRepositoryProvider = Provider<ExerciseRepository>((ref) {
-  final db = ref.watch(databaseProvider);
-  return ExerciseRepository(db);
+  final databaseService = ref.watch(databaseProvider);
+  return ExerciseRepository(databaseService);
 });
 
 // Exercise list provider
 final exerciseListProvider = FutureProvider<List<Exercise>>((ref) async {
-  final repo = ref.watch(exerciseRepositoryProvider);
-  return await repo.getAll();
+  final repository = ref.watch(exerciseRepositoryProvider);
+  return await repository.getAllExercisesOrderedByBuiltInThenName();
 });
 
 // Workout repository provider
 final workoutRepositoryProvider = Provider<WorkoutRepository>((ref) {
-  final db = ref.watch(databaseProvider);
-  return WorkoutRepository(db);
+  final databaseService = ref.watch(databaseProvider);
+  return WorkoutRepository(databaseService);
 });
 
 // Workout list provider
 final workoutListProvider = FutureProvider<List<Workout>>((ref) async {
-  final repo = ref.watch(workoutRepositoryProvider);
-  return await repo.getAll();
+  final repository = ref.watch(workoutRepositoryProvider);
+  return await repository.getAll();
 });
 
 // PR Provider - calculates personal records for all exercises
 final prMapProvider = FutureProvider<Map<int, PersonalRecord>>((ref) async {
   final workouts = await ref.watch(workoutListProvider.future);
   final exercises = await ref.watch(exerciseListProvider.future);
-  final workoutRepo = ref.watch(workoutRepositoryProvider);
+  final workoutRepository = ref.watch(workoutRepositoryProvider);
 
-  final prMap = <int, PersonalRecord>{};
+  final personalRecordsMap = <int, PersonalRecord>{};
 
-  // Build maps of workout exercises and sets
   final workoutExercisesMap = <int, List<WorkoutExercise>>{};
   final setsMap = <int, List<ExerciseSet>>{};
 
   for (final workout in workouts) {
-    final workoutExercises = await workoutRepo.getWorkoutExercises(workout.id!);
+    final workoutExercises = await workoutRepository.getWorkoutExercises(workout.id!);
     workoutExercisesMap[workout.id!] = workoutExercises;
 
     for (final we in workoutExercises) {
-      final sets = await workoutRepo.getSets(we.id!);
+      final sets = await workoutRepository.getSets(we.id!);
       setsMap[we.id!] = sets;
     }
   }
 
-  // Calculate PRs for each exercise
   for (final exercise in exercises) {
-    final pr = PRCalculator.calculatePRs(
+    final personalRecord = PRCalculator.calculatePRs(
       exerciseId: exercise.id!,
       workouts: workouts,
       workoutExercisesMap: workoutExercisesMap,
       setsMap: setsMap,
     );
 
-    if (pr.hasRecords) {
-      prMap[exercise.id!] = pr;
+    if (personalRecord.hasRecords) {
+      personalRecordsMap[exercise.id!] = personalRecord;
     }
   }
 
-  return prMap;
+  return personalRecordsMap;
 });

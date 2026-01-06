@@ -4,6 +4,7 @@ import '../data/settings_provider.dart';
 import '../data/settings_repository.dart';
 import '../../../core/database/db.dart';
 import '../../../core/providers.dart';
+import '../../../core/widgets/confirmation_dialog.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -132,40 +133,28 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showResetDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
+  void _showResetDialog(BuildContext context, WidgetRef ref) async {
+    final confirmed = await ConfirmationDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Reset All Data?'),
-        content: const Text(
-          'This will permanently delete all your workouts and custom exercises. '
-              'This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final db = ref.read(databaseProvider);
-              await db.deleteDb();
-              ref.invalidate(workoutListProvider);
-              ref.invalidate(exerciseListProvider);
-              if (context.mounted) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('All data has been reset. Restart the app to reinitialize.'),
-                  ),
-                );
-              }
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete All'),
-          ),
-        ],
-      ),
+      title: 'Reset All Data?',
+      message: 'This will permanently delete all your workouts and custom exercises. This action cannot be undone.',
+      confirmText: 'Delete All',
+      isDangerous: true,
     );
+
+    if (confirmed && context.mounted) {
+      final databaseService = ref.read(databaseProvider);
+      await databaseService.deleteDatabaseFile();
+      ref.invalidate(workoutListProvider);
+      ref.invalidate(exerciseListProvider);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All data has been reset. Restart the app to reinitialize.'),
+          ),
+        );
+      }
+    }
   }
 }
