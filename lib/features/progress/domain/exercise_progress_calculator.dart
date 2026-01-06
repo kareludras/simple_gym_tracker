@@ -7,6 +7,7 @@ class ProgressDataPoint {
   final int maxReps;
   final double totalVolume;
   final int totalSets;
+  final double estimatedOneRepMax;
 
   ProgressDataPoint({
     required this.date,
@@ -14,6 +15,7 @@ class ProgressDataPoint {
     required this.maxReps,
     required this.totalVolume,
     required this.totalSets,
+    required this.estimatedOneRepMax,
   });
 }
 
@@ -27,6 +29,11 @@ class ExerciseProgressData {
     required this.totalWorkouts,
     required this.totalSets,
   });
+}
+
+double calculateOneRepMax(double weight, int reps) {
+  if (reps == 1) return weight;
+  return weight * (1 + reps / 30);
 }
 
 final exerciseProgressProvider = FutureProvider.family<ExerciseProgressData, int>(
@@ -48,6 +55,7 @@ final exerciseProgressProvider = FutureProvider.family<ExerciseProgressData, int
             double maxWeight = 0;
             int maxReps = 0;
             double totalVolume = 0;
+            double bestEstimatedOneRepMax = 0;
 
             for (final set in sets) {
               if (set.weight != null && set.weight! > maxWeight) {
@@ -58,6 +66,11 @@ final exerciseProgressProvider = FutureProvider.family<ExerciseProgressData, int
               }
               if (set.weight != null && set.reps != null) {
                 totalVolume += set.weight! * set.reps!;
+                
+                final estimatedMax = calculateOneRepMax(set.weight!, set.reps!);
+                if (estimatedMax > bestEstimatedOneRepMax) {
+                  bestEstimatedOneRepMax = estimatedMax;
+                }
               }
             }
 
@@ -69,6 +82,7 @@ final exerciseProgressProvider = FutureProvider.family<ExerciseProgressData, int
               maxReps: maxReps,
               totalVolume: totalVolume,
               totalSets: sets.length,
+              estimatedOneRepMax: bestEstimatedOneRepMax,
             ));
           }
         }

@@ -8,6 +8,7 @@ import '../../exercises/data/models/exercise.dart';
 import '../../settings/data/settings_provider.dart';
 import '../../settings/data/settings_repository.dart';
 import '../domain/exercise_progress_calculator.dart';
+import 'predictive_calculator_screen.dart';
 
 class ProgressScreen extends ConsumerStatefulWidget {
   const ProgressScreen({super.key});
@@ -31,6 +32,11 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
         data: (exercises) => _buildProgressView(exercises),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(child: Text('Error: $error')),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _openCalculator(context),
+        icon: const Icon(Icons.calculate),
+        label: const Text('Calculator'),
       ),
     );
   }
@@ -69,7 +75,7 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
             ),
             const SizedBox(height: UIConstants.smallSpacing),
             DropdownButtonFormField<Exercise>(
-              value: _selectedExercise,
+              initialValue: _selectedExercise,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 contentPadding: EdgeInsets.symmetric(
@@ -131,6 +137,8 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
             children: [
               _buildMaxWeightChart(progressData),
               const SizedBox(height: UIConstants.largeSpacing),
+              _buildOneRepMaxChart(progressData),
+              const SizedBox(height: UIConstants.largeSpacing),
               _buildVolumeChart(progressData),
               const SizedBox(height: UIConstants.largeSpacing),
               _buildStatsCards(progressData),
@@ -176,6 +184,53 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
     );
   }
 
+  Widget _buildOneRepMaxChart(ExerciseProgressData progressData) {
+    final weightUnit = ref.watch(weightUnitProvider);
+    final unitLabel = weightUnit == WeightUnit.kg ? 'kg' : 'lb';
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(UIConstants.cardPadding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Estimated 1RM Over Time ($unitLabel)',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Using Epley formula: weight × (1 + reps/30)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: UIConstants.mediumSpacing),
+            SizedBox(
+              height: 200,
+              child: LineChart(
+                _createLineChartData(
+                  progressData.dataPoints,
+                  (point) => point.estimatedOneRepMax,
+                  color: Colors.purple,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildVolumeChart(ExerciseProgressData progressData) {
     final weightUnit = ref.watch(weightUnitProvider);
     final unitLabel = weightUnit == WeightUnit.kg ? 'kg' : 'lb';
@@ -200,6 +255,7 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                 _createLineChartData(
                   progressData.dataPoints,
                   (point) => point.totalVolume,
+                  color: Colors.green,
                 ),
               ),
             ),
@@ -210,28 +266,51 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
   }
 
   Widget _buildStatsCards(ExerciseProgressData progressData) {
-    return Row(
+    final weightUnit = ref.watch(weightUnitProvider);
+    final unitLabel = weightUnit == WeightUnit.kg ? 'kg' : 'lb';
+
+    final latestOneRepMax = progressData.dataPoints.isNotEmpty
+        ? progressData.dataPoints.last.estimatedOneRepMax
+        : 0.0;
+
+    return Column(
       children: [
-        Expanded(
-          child: _buildStatCard(
-            'Total Workouts',
-            progressData.totalWorkouts.toString(),
-            Icons.fitness_center,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                'Total Workouts',
+                progressData.totalWorkouts.toString(),
+                Icons.fitness_center,
+              ),
+            ),
+            const SizedBox(width: UIConstants.mediumSpacing),
+            Expanded(
+              child: _buildStatCard(
+                'Total Sets',
+                progressData.totalSets.toString(),
+                Icons.format_list_numbered,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: UIConstants.mediumSpacing),
-        Expanded(
-          child: _buildStatCard(
-            'Total Sets',
-            progressData.totalSets.toString(),
-            Icons.format_list_numbered,
-          ),
+        const SizedBox(height: UIConstants.mediumSpacing),
+        _buildStatCard(
+          'Current Estimated 1RM',
+          '${latestOneRepMax.toStringAsFixed(1)} $unitLabel',
+          Icons.trending_up,
+          isFullWidth: true,
         ),
       ],
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon, {
+    bool isFullWidth = false,
+  }) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(UIConstants.cardPadding),
@@ -262,8 +341,9 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
 
   LineChartData _createLineChartData(
     List<ProgressDataPoint> dataPoints,
-    double Function(ProgressDataPoint) valueExtractor,
-  ) {
+    double Function(ProgressDataPoint) valueExtractor, {
+    Color color = Colors.blue,
+  }) {
     final spots = dataPoints.asMap().entries.map((entry) {
       return FlSpot(
         entry.key.toDouble(),
@@ -317,15 +397,24 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
         LineChartBarData(
           spots: spots,
           isCurved: true,
-          color: Colors.blue,
+          color: color,
           barWidth: 3,
           dotData: const FlDotData(show: true),
           belowBarData: BarAreaData(
             show: true,
-            color: Colors.blue.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
           ),
         ),
       ],
+    );
+  }
+
+  void _openCalculator(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PredictiveCalculatorScreen(),
+      ),
     );
   }
 }
