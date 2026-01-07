@@ -46,6 +46,7 @@ A simple, offline-first workout logging app built with Flutter.
 - **Confirmation Dialogs** - Prevent accidental deletions
 - **Custom Exceptions** - Clear error messages for better UX
 - **Responsive UI** - Adaptive layouts with Material 3 design
+- **View Toggles** - Switch between list and calendar views in History
 
 ## 🚀 Future Roadmap (v2.0+)
 

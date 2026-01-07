@@ -5,14 +5,12 @@ import 'package:gym_tracker/core/widgets/confirmation_dialog.dart';
 void main() {
   group('ConfirmationDialog', () {
     testWidgets('shows confirmation dialog with correct content', (tester) async {
-      bool? result;
-
       await tester.pumpWidget(
         MaterialApp(
           home: Builder(
             builder: (context) => ElevatedButton(
               onPressed: () async {
-                result = await ConfirmationDialog.show(
+                await ConfirmationDialog.show(
                   context: context,
                   title: 'Test Title',
                   message: 'Test Message',
