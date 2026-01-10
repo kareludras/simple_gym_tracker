@@ -23,6 +23,10 @@ A simple, offline-first workout logging app built with Flutter.
 - **Workout History** - View all past workouts with date and notes
 - **Workout Detail View** - Tap any workout to see full details (exercises, sets, reps, weights, total volume)
 - **Workout Notes** - Add notes to track how you felt or other details
+- **Date Management** - Edit workout date and time from multiple places:
+  - During active workout (tap date in AppBar)
+  - From history list (tap date with edit icon)
+  - Full date and time picker with confirmation
 - **Delete Workouts** - Remove workouts from history with confirmation dialog
 
 ### Progress & Analytics

@@ -5,6 +5,7 @@ import '../data/workout_draft_provider.dart';
 import 'widgets/exercise_card.dart';
 import '../../../core/providers.dart';
 import '../../../core/exceptions/app_exceptions.dart';
+import '../../../core/widgets/date_picker_dialog.dart';
 
 class ActiveWorkoutScreen extends ConsumerStatefulWidget {
   const ActiveWorkoutScreen({super.key});
@@ -31,7 +32,17 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
   PreferredSizeWidget _buildAppBar(WorkoutDraft draft) {
     return AppBar(
       title: _isWorkoutActive
-          ? Text(DateFormat('EEEE, MMM d').format(draft.date))
+          ? InkWell(
+              onTap: _showDatePicker,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(DateFormat('EEEE, MMM d').format(draft.date)),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.edit, size: 18),
+                ],
+              ),
+            )
           : const Text('Workout'),
       actions: _isWorkoutActive ? _buildAppBarActions() : null,
     );
@@ -140,6 +151,19 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     setState(() {
       _isWorkoutActive = true;
     });
+  }
+
+  Future<void> _showDatePicker() async {
+    final draft = ref.read(workoutDraftProvider);
+    final newDate = await WorkoutDatePicker.show(
+      context: context,
+      initialDate: draft.date,
+      title: 'Change Workout Date',
+    );
+
+    if (newDate != null) {
+      ref.read(workoutDraftProvider.notifier).setDate(newDate);
+    }
   }
 
   Future<void> _showExercisePicker() async {

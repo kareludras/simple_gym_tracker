@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/providers.dart';
 import '../../../core/widgets/confirmation_dialog.dart';
+import '../../../core/widgets/date_picker_dialog.dart';
 import 'workout_detail_screen.dart';
 import 'widgets/calendar_view.dart';
 
@@ -67,8 +68,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 leading: const CircleAvatar(
                   child: Icon(Icons.fitness_center),
                 ),
-                title: Text(
-                  DateFormat('EEEE, MMMM d, y').format(workout.date),
+                title: InkWell(
+                  onTap: () => _editWorkoutDate(workout),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(DateFormat('EEEE, MMMM d, y').format(workout.date)),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.edit, size: 16),
+                    ],
+                  ),
                 ),
                 subtitle: workout.note != null
                     ? Text(
@@ -100,6 +109,26 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           ? HistoryViewMode.calendar
           : HistoryViewMode.list;
     });
+  }
+
+  Future<void> _editWorkoutDate(dynamic workout) async {
+    final newDate = await WorkoutDatePicker.showWithConfirmation(
+      context: context,
+      currentDate: workout.date,
+    );
+
+    if (newDate != null && mounted) {
+      final updatedWorkout = workout.copyWith(date: newDate);
+      final repository = ref.read(workoutRepositoryProvider);
+      await repository.updateWorkout(updatedWorkout);
+      ref.invalidate(workoutListProvider);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Workout date updated')),
+        );
+      }
+    }
   }
 
   void _navigateToWorkoutDetail(BuildContext context, workout) {
