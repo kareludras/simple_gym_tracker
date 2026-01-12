@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -15,14 +16,24 @@ class DatabaseService {
   }
 
   Future<Database> _initializeDatabase() async {
-    final databasePath = await _getDatabasePath();
-
-    return await openDatabase(
-      databasePath,
-      version: DatabaseConstants.databaseVersion,
-      onCreate: Migrations.onCreate,
-      onUpgrade: Migrations.onUpgrade,
-    );
+    if (kIsWeb) {
+      debugPrint('Opening in-memory database for web...');
+      final db = await openDatabase(
+        inMemoryDatabasePath,
+        version: DatabaseConstants.databaseVersion,
+        onCreate: Migrations.onCreate,
+      );
+      debugPrint('In-memory database opened successfully');
+      return db;
+    } else {
+      final databasePath = await _getDatabasePath();
+      return await openDatabase(
+        databasePath,
+        version: DatabaseConstants.databaseVersion,
+        onCreate: Migrations.onCreate,
+        onUpgrade: Migrations.onUpgrade,
+      );
+    }
   }
 
   Future<String> _getDatabasePath() async {
@@ -38,9 +49,14 @@ class DatabaseService {
   }
 
   Future<void> deleteDatabaseFile() async {
-    final databasePath = await _getDatabasePath();
-    await deleteDatabase(databasePath);
-    _databaseInstance = null;
+    if (kIsWeb) {
+      await closeDatabaseConnection();
+      _databaseInstance = null;
+    } else {
+      final databasePath = await _getDatabasePath();
+      await deleteDatabase(databasePath);
+      _databaseInstance = null;
+    }
   }
 }
 
