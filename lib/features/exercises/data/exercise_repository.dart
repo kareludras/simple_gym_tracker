@@ -84,7 +84,6 @@ class ExerciseRepository {
       id: null,
       name: '${originalExercise.name} (Copy)',
       isBuiltin: false,
-      createdAt: DateTime.now(),
     );
 
     return await createCustomExercise(duplicatedExercise);
